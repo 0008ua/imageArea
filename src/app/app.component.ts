@@ -35,7 +35,10 @@ export class AppComponent implements OnInit, AfterViewInit {
   ctx: CanvasRenderingContext2D;
   rect: DOMRect;
   scale: number;
-
+  scaledRect = {} as {
+    w: number;
+    h: number;
+  };
   one$: any;
   two$: any;
 
@@ -54,6 +57,10 @@ export class AppComponent implements OnInit, AfterViewInit {
 
     this.scale = this.window.devicePixelRatio;
 
+    this.scaledRect = {
+      h: this.rect.height * this.scale,
+      w: this.rect.width * this.scale,
+    };
     // this.rect
     //  - relatively to document
     // x: 517.2000122070312
@@ -66,8 +73,8 @@ export class AppComponent implements OnInit, AfterViewInit {
     // bottom: 208
     // left: 517.2000122070312
 
-    this.renderer.setProperty(this.canvasEl.nativeElement, 'width', this.rect.width * this.scale);
-    this.renderer.setProperty(this.canvasEl.nativeElement, 'height', this.rect.height * this.scale);
+    this.renderer.setProperty(this.canvasEl.nativeElement, 'width', this.scaledRect.w);
+    this.renderer.setProperty(this.canvasEl.nativeElement, 'height', this.scaledRect.h);
     this.ctx.scale(this.scale, this.scale);
 
     // take last value without initial value
@@ -160,18 +167,49 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   addPicture(event: Event) {
     // this.processingLoadPicture = true;
-    
-    // const file = (event.target as HTMLInputElement).files[0];
-    // const fr = new FileReader();
-    // fr.readAsDataURL(file);
 
-    // fr.onload = () => {
-    //   const img = new Image();   // Создает новый элемент изображения
-    //   img.src = fr.result as string;
-    //   img.onload = () => {
-    //     this.ctx.drawImage(img, 100, 0);
-    //   };
-    // };
+    const file = (event.target as HTMLInputElement).files[0];
+    const fr = new FileReader();
+
+    fr.onload = () => {
+      const img = new Image();   // Создает новый элемент изображения
+      img.src = fr.result as string;
+      img.onload = () => {
+        this.ctx.drawImage(img, 0, 0, this.scaledRect.w, this.scaledRect.h);
+      };
+    };
+    fr.readAsDataURL(file);
+
+  // var canvas = document.getElementById('myCanvas');
+  // var context = canvas.getContext('2d');
+  // var imageObj = new Image();
+
+  // imageObj.onload = function() {
+  //   context.drawImage(imageObj, 0, 0);
+  // };
+  // imageObj.src = 'http://www.mobilize-it.com/cellphone.png';
+
+  // var calculateAspectRatioFit = function(srcWidth, srcHeight, maxWidth, maxHeight) {
+  //   var ratio = Math.min(maxWidth / srcWidth, maxHeight / srcHeight);
+
+  //   return {
+  //     width: srcWidth * ratio,
+  //     height: srcHeight * ratio
+  //   };
+  // };
+
+  // var $canvas = $(canvas);
+  // var $container = $('.container');
+
+  // var resizeIt = function() {
+  //   var size = calculateAspectRatioFit($canvas.width(), $canvas.height(), $container.width(), $container.height());
+
+  //   $canvas.css('height', size.height);
+  //   $canvas.css('width', size.width);
+  // };
+
+  // resizeIt();
+  // window.addEventListener('resize', resizeIt);
 
 
     // const img = new Image();   // Создает новый элемент изображения
