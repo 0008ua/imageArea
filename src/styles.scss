@@ -1,0 +1,35 @@
+// initial reset
+html {
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+canvas {
+  width: 400px;
+  height: 200px;
+  border: 1px solid darkgray;
+  // background-image: url(./assets/cell.png);
+}
+
+.input {
+  margin: 10px;
+  display: flex;
+  width: 40%;
+  justify-content: center;
+  input {
+    width: 80%;
+  }
+}

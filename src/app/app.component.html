@@ -1,0 +1,16 @@
+<div class="container">
+  <canvas #area></canvas>
+</div>
+<div class="container">
+  <div class="input">
+    <input type="range" min="1" max="5" value="2" #range>
+  </div>
+  <div class="input">
+    <input type="color" #color>
+  </div>
+</div>
+<input #inputPictureDirective type="file" (change)="addPicture($event)"
+  accept=".jpg, .jpe, .jpeg, .bmp, .webp, .png, .gif, .svg" style="display:none;">
+    <button mat-mini-fab color="primary" type="button" aria-label="add"
+      (click)="inputPictureDirective.click()">add</button>
+      
