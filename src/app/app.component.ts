@@ -2,6 +2,17 @@ import { Component, ViewChild, ElementRef, OnInit, AfterViewInit, Renderer2, Hos
 
 import { Observable, fromEvent, ReplaySubject, Subject, BehaviorSubject, of } from 'rxjs';
 import { map, pairwise, switchMap, takeUntil, withLatestFrom, mergeMap } from 'rxjs/operators';
+import { throwMatDialogContentAlreadyAttachedError } from '@angular/material';
+
+interface IDimensions {
+  width: number;
+  height: number;
+}
+
+interface IRectangle extends IDimensions {
+  x: number;
+  y: number;
+}
 
 @Component({
   selector: 'app-root',
@@ -35,17 +46,51 @@ export class AppComponent implements OnInit, AfterViewInit {
   ctx: CanvasRenderingContext2D;
   rect: DOMRect;
   scale: number;
-  scaledRect = {} as {
-    w: number;
-    h: number;
-  };
   one$: any;
   two$: any;
+  rectangle = {
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100
+  } as IRectangle;
 
   constructor(
     private window: Window,
     private renderer: Renderer2,
   ) {
+  }
+
+  @HostListener('mousemove', ['$event'])
+  onMove(e: MouseEvent) {
+    if (e.target === this.canvasEl.nativeElement) {
+      this.mouseMove$.next(e);
+    }
+  }
+
+  @HostListener('mousedown', ['$event'])
+  onMouseDown(e: MouseEvent) {
+    this.mouseDown$.next(e);
+  }
+
+  @HostListener('mouseup', ['$event'])
+  onMouseUp(e: MouseEvent) {
+    this.mouseUp$.next(e);
+  }
+
+  @HostListener('mouseout', ['$event'])
+  onMouseOut(e: MouseEvent) {
+    this.mouseOut$.next(e);
+  }
+
+  @HostListener('input', ['$event'])
+  onInput(e: KeyboardEvent) {
+    if (e.target === this.colorEl.nativeElement) {
+      this.colorInput$.next(this.colorEl.nativeElement.value);
+    }
+    if (e.target === this.rangeEl.nativeElement) {
+      this.rangeInput$.next(this.rangeEl.nativeElement.value);
+    }
   }
 
   ngOnInit() {
@@ -54,13 +99,6 @@ export class AppComponent implements OnInit, AfterViewInit {
   ngAfterViewInit() {
     this.ctx = this.canvasEl.nativeElement.getContext('2d');
     this.rect = this.canvasEl.nativeElement.getBoundingClientRect();
-
-    this.scale = this.window.devicePixelRatio;
-
-    this.scaledRect = {
-      h: this.rect.height * this.scale,
-      w: this.rect.width * this.scale,
-    };
     // this.rect
     //  - relatively to document
     // x: 517.2000122070312
@@ -72,10 +110,21 @@ export class AppComponent implements OnInit, AfterViewInit {
     // right: 917.2000122070312
     // bottom: 208
     // left: 517.2000122070312
-
-    this.renderer.setProperty(this.canvasEl.nativeElement, 'width', this.scaledRect.w);
-    this.renderer.setProperty(this.canvasEl.nativeElement, 'height', this.scaledRect.h);
+    this.scale = this.window.devicePixelRatio;
+    this.renderer.setProperty(this.canvasEl.nativeElement, 'width', this.rect.width * this.scale);
+    this.renderer.setProperty(this.canvasEl.nativeElement, 'height', this.rect.height * this.scale);
     this.ctx.scale(this.scale, this.scale);
+
+    console.log('canvas', this.canvasEl.nativeElement.width);
+
+    const img = new Image();
+    img.src = '/assets/cell.png';
+
+    img.onload = () => {
+      this.ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+      this.ctx.clearRect(0, 0, this.rect.width / 2, 100);
+
+    };
 
     // take last value without initial value
     this.mouseMove$ = new ReplaySubject(1);
@@ -133,117 +182,104 @@ export class AppComponent implements OnInit, AfterViewInit {
       );
   }
 
-  @HostListener('mousemove', ['$event'])
-  onMove(e: MouseEvent) {
-    if (e.target === this.canvasEl.nativeElement) {
-      this.mouseMove$.next(e);
-    }
-  }
 
-  @HostListener('mousedown', ['$event'])
-  onMouseDown(e: MouseEvent) {
-    this.mouseDown$.next(e);
-  }
+  drawPicture() {
 
-  @HostListener('mouseup', ['$event'])
-  onMouseUp(e: MouseEvent) {
-    this.mouseUp$.next(e);
-  }
-
-  @HostListener('mouseout', ['$event'])
-  onMouseOut(e: MouseEvent) {
-    this.mouseOut$.next(e);
-  }
-
-  @HostListener('input', ['$event'])
-  onInput(e: KeyboardEvent) {
-    if (e.target === this.colorEl.nativeElement) {
-      this.colorInput$.next(this.colorEl.nativeElement.value);
-    }
-    if (e.target === this.rangeEl.nativeElement) {
-      this.rangeInput$.next(this.rangeEl.nativeElement.value);
-    }
   }
 
   addPicture(event: Event) {
-    // this.processingLoadPicture = true;
-
     const file = (event.target as HTMLInputElement).files[0];
     const fr = new FileReader();
-
     fr.onload = () => {
-      const img = new Image();   // Создает новый элемент изображения
+      const img = new Image();
       img.src = fr.result as string;
       img.onload = () => {
-        this.ctx.drawImage(img, 0, 0, this.scaledRect.w, this.scaledRect.h);
+        const wRatio = this.rect.width / img.width;
+        const hRatio = this.rect.height / img.height;
+        const ratio = Math.min(wRatio, hRatio);
+        const shiftW = (this.rect.width - img.width * ratio) / 2;
+        const shiftH = (this.rect.height - img.height * ratio) / 2;
+        this.ctx.clearRect(0, 0, this.rect.width, this.rect.height);
+        this.ctx.drawImage(img, 0, 0, img.width, img.height,
+          shiftW, shiftH, img.width * ratio, img.height * ratio);
+
+
+        // this.scaledImg = {
+        //   w: img.width * this.scale,
+        //   h: img.height * this.scale,
+        // };
+        // const wRatio = this.scaledRect.w / this.scaledImg.w;
+        // const hRatio = this.scaledRect.h / this.scaledImg.h;
+        // const ratio = Math.min(wRatio, hRatio);
+        // console.log('this.scaledRect', this.scaledRect);
+        // console.log('this.scaledImg', this.scaledImg.w * ratio, this.scaledImg.h * ratio);
+        // const shiftW = (this.scaledRect.w - this.scaledImg.w * ratio) / 2 / this.scale;
+        // const shiftH = (this.scaledRect.h - this.scaledImg.h * ratio) / 2 / this.scale;
+        // console.log('shiftW', shiftW);
+        // console.log('shiftH', shiftH);
+        // // var centerShift_y = (canvas.height - img.height * ratio) / 2;
+        // this.ctx.clearRect(0, 0, this.scaledRect.w, this.scaledRect.h);
+        // this.ctx.drawImage(img, 0, 0, this.scaledImg.w, this.scaledImg.h,
+        //   shiftW, shiftH, this.scaledImg.w * ratio, this.scaledImg.h * ratio);
       };
     };
     fr.readAsDataURL(file);
+  }
 
-  // var canvas = document.getElementById('myCanvas');
-  // var context = canvas.getContext('2d');
-  // var imageObj = new Image();
+  save() {
+    this.ctx.save();
+  }
 
-  // imageObj.onload = function() {
-  //   context.drawImage(imageObj, 0, 0);
-  // };
-  // imageObj.src = 'http://www.mobilize-it.com/cellphone.png';
+  restore() {
+    this.ctx.restore();
+  }
 
-  // var calculateAspectRatioFit = function(srcWidth, srcHeight, maxWidth, maxHeight) {
-  //   var ratio = Math.min(maxWidth / srcWidth, maxHeight / srcHeight);
+  crop() {
+    // this.ctx.beginPath();
+    // this.ctx.strokeStyle = 'red';
+    // this.ctx.moveTo(this.rect.width * .1, this.rect.height * .1);
+    // this.ctx.lineTo(this.rect.width * .1, this.rect.height * .9);
+    // this.ctx.lineTo(this.rect.width * .9, this.rect.height * .9);
+    // this.ctx.lineTo(this.rect.width * .9, this.rect.height * .1);
+    // this.ctx.lineTo(this.rect.width * .1, this.rect.height * .1);
+    // this.ctx.stroke();
 
-  //   return {
-  //     width: srcWidth * ratio,
-  //     height: srcHeight * ratio
-  //   };
-  // };
+    this.ctx.fillStyle = 'yellow';
+    this.ctx.fillRect(0, 0, 250, 100);
 
-  // var $canvas = $(canvas);
-  // var $container = $('.container');
+    this.ctx.transform(1, 0.5, -0.5, 1, 30, 10);
+    this.ctx.fillStyle = 'red';
+    this.ctx.fillRect(0, 0, 250, 100);
 
-  // var resizeIt = function() {
-  //   var size = calculateAspectRatioFit($canvas.width(), $canvas.height(), $container.width(), $container.height());
-
-  //   $canvas.css('height', size.height);
-  //   $canvas.css('width', size.width);
-  // };
-
-  // resizeIt();
-  // window.addEventListener('resize', resizeIt);
+    this.ctx.transform(1, 0.5, -0.5, 1, 30, 10);
+    this.ctx.fillStyle = 'blue';
+    this.ctx.fillRect(0, 0, 250, 100);
 
 
-    // const img = new Image();   // Создает новый элемент изображения
-    // img.src =  './assets/cell.png';
-    // console.log('file', file);
-    // img.onload = () => {
-      
-      // this.ctx.beginPath();
-      // this.ctx.moveTo(30, 96);
-      // this.ctx.lineTo(70, 66);
-      // this.ctx.lineTo(103, 76);
-      // this.ctx.lineTo(170, 15);
-      // this.ctx.stroke();
-    // const error = this.sharedService.checkPictureFile(file).err;
+    //   const cropCanvas = this.renderer.createElement('canvas');
+    //   this.renderer.appendChild(this.canvasEl.nativeElement, cropCanvas);
+    //   cropCanvas.width = this.rect.width * .8;
+    //   cropCanvas.height = this.rect.height * .8;
+    //   // const cropCanvasCtx = cropCanvas.getContext('2d');
 
-    // if (error) {
-    //   this.matSnackBar.open(error, '', { duration: 2000 });
-    //   this.processingLoadPicture = false;
-    // } else {
-    //   this.sharedService.uploadPicture(file, 'product', [
-    //     { width: 1100, height: 825, crop: 'fill', fetch_format: 'auto' }, // popup - lg, xl
-    //     { width: 760, height: 570, crop: 'fill', fetch_format: 'auto' }, // popp up - sm, md
-    //     { width: 590, height: 443, crop: 'fill', fetch_format: 'auto' }, // xs
-    //     { width: 460, height: 345, crop: 'fill', fetch_format: 'auto' }, // sm
-    //     { width: 360, height: 270, crop: 'fill', fetch_format: 'auto' }, // lg, xl
-    //     { width: 300, height: 225, crop: 'fill', fetch_format: 'auto' }, // md
-    //   ])
-    //     .subscribe(public_id => {
-    //       this.productForm.get('picture').setValue(public_id);
-    //       this.processingLoadPicture = false;
-    //       this.productForm.get('picture').markAsDirty();
-    //     },
-    //       err => this.matSnackBar.open(err.error.message, '', { duration: 2000 })
-    //     );
-    // }
+    //   const x = cropCanvas.getContext('2d').drawImage(this.canvasEl.nativeElement,
+    //     this.rect.width * .1, this.rect.height * .1, cropCanvas.width, cropCanvas.height,
+    //     0, 0, this.rect.width, this.rect.height);
+
+    //   this.ctx.clearRect(0, 0, this.scaledRect.w, this.scaledRect.h);
+    //   this.ctx.drawImage(cropCanvas, 0, 0, this.scaledRect.w, this.scaledRect.h);
+  }
+
+  animate() {
+    this.ctx.clearRect(0, 0, this.rect.width, this.rect.height);
+    this.rectangle.x += 1;
+    if (this.rectangle.x > 100) {
+      return;
+    }
+    console.log(' this.rectangle.x', this.rectangle.x);
+    this.ctx.fillRect(this.rectangle.x, this.rectangle.y, this.rectangle.width, this.rectangle.height);
+    this.window.requestAnimationFrame(this.animate.bind(this));
+
   }
 }
+

@@ -11,6 +11,20 @@
 </div>
 <input #inputPictureDirective type="file" (change)="addPicture($event)"
   accept=".jpg, .jpe, .jpeg, .bmp, .webp, .png, .gif, .svg" style="display:none;">
-    <button mat-mini-fab color="primary" type="button" aria-label="add"
-      (click)="inputPictureDirective.click()">add</button>
-      
+<div fxLayout="row" fxLayoutAlign="space-around">
+  <div fxFlex></div>
+  <button mat-raised-button color="primary" type="button" aria-label="add" fxFlex
+    (click)="inputPictureDirective.click()">add</button>
+  <div fxFlex></div>
+  <button mat-raised-button color="primary" type="button" aria-label="crop" fxFlex (click)="crop()">crop</button>
+  <div fxFlex></div>
+  <button mat-raised-button color="primary" type="button" aria-label="animate" fxFlex
+    (click)="animate()">animate</button>
+  <div fxFlex></div>
+  <button mat-raised-button color="primary" type="button" fxFlex
+    (click)="save()">save</button>
+  <div fxFlex></div>
+  <button mat-raised-button color="primary" type="button" fxFlex
+    (click)="restore()">restore</button>
+  <div fxFlex></div>
+</div>
